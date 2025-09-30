@@ -2,59 +2,98 @@
 @tailwind components;
 @tailwind utilities;
 
+/* AI Content Creation Tool Design System */
+
 @layer base {
-  
-:root  {
-  --background: 262.1 100% 100%;
-  --foreground: 262.1 5% 10%;
-  --card: 262.1 50% 100%;
-  --card-foreground: 262.1 5% 15%;
-  --popover: 262.1 100% 100%;
-  --popover-foreground: 262.1 100% 10%;
-  --primary: 262.1 88.3% 57.8%;
-  --primary-foreground: 0 0% 100%;
-  --secondary: 262.1 30% 90%;
-  --secondary-foreground: 0 0% 0%;
-  --muted: 224.10000000000002 30% 95%;
-  --muted-foreground: 262.1 5% 40%;
-  --accent: 224.10000000000002 30% 90%;
-  --accent-foreground: 262.1 5% 15%;
-  --destructive: 0 100% 50%;
-  --destructive-foreground: 262.1 5% 100%;
-  --border: 262.1 30% 82%;
-  --input: 262.1 30% 50%;
-  --ring: 262.1 88.3% 57.8%;
-  --radius: 0.5rem;
-}
-.dark  {
-  --background: 262.1 50% 10%;
-  --foreground: 262.1 5% 100%;
-  --card: 262.1 50% 10%;
-  --card-foreground: 262.1 5% 100%;
-  --popover: 262.1 50% 5%;
-  --popover-foreground: 262.1 5% 100%;
-  --primary: 262.1 88.3% 57.8%;
-  --primary-foreground: 0 0% 100%;
-  --secondary: 262.1 30% 20%;
-  --secondary-foreground: 0 0% 100%;
-  --muted: 224.10000000000002 30% 25%;
-  --muted-foreground: 262.1 5% 65%;
-  --accent: 224.10000000000002 30% 25%;
-  --accent-foreground: 262.1 5% 95%;
-  --destructive: 0 100% 50%;
-  --destructive-foreground: 262.1 5% 100%;
-  --border: 262.1 30% 50%;
-  --input: 262.1 30% 50%;
-  --ring: 262.1 88.3% 57.8%;
-  --radius: 0.5rem;
+  :root {
+    /* Core Color Palette - Modern AI Theme */
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
+    
+    --popover: 240 5% 6%;
+    --popover-foreground: 0 0% 98%;
+    
+    /* Primary - Deep Purple to Blue Gradient */
+    --primary: 258 90% 66%;
+    --primary-foreground: 0 0% 98%;
+    --primary-hover: 258 90% 60%;
+    
+    /* Secondary - Soft Purple */
+    --secondary: 240 5% 8%;
+    --secondary-foreground: 240 5% 80%;
+    
+    /* Muted Elements */
+    --muted: 240 5% 8%;
+    --muted-foreground: 240 4% 46%;
+    
+    /* Accent - Warm Orange */
+    --accent: 24 95% 63%;
+    --accent-foreground: 0 0% 98%;
+    --accent-hover: 24 95% 57%;
+    
+    /* Status Colors */
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 98%;
+    --warning: 48 96% 53%;
+    --warning-foreground: 0 0% 98%;
+    
+    /* UI Elements */
+    --border: 240 5% 11%;
+    --input: 240 5% 11%;
+    --ring: 258 90% 66%;
+    
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(258 90% 66%), hsl(216 100% 68%));
+    --gradient-accent: linear-gradient(135deg, hsl(24 95% 63%), hsl(45 93% 58%));
+    --gradient-surface: linear-gradient(180deg, hsl(240 10% 3.9%), hsl(240 8% 5%));
+    
+    /* Shadows */
+    --shadow-glow: 0 0 40px hsl(258 90% 66% / 0.3);
+    --shadow-card: 0 4px 32px hsl(240 10% 1% / 0.5);
+    --shadow-intense: 0 8px 64px hsl(258 90% 66% / 0.2);
+    
+    /* Animations */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-bounce: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    
+    --radius: 0.75rem;
+
+  }
 }
 
+@layer components {
+  /* Custom Component Styles */
+  .gradient-text {
+    @apply bg-gradient-to-r from-primary to-blue-400 bg-clip-text text-transparent;
+  }
+  
+  .hero-button {
+    @apply bg-gradient-to-r from-primary to-blue-500 transition-all duration-300 transform hover:scale-105;
+  }
+  
+  .hero-button:hover {
+    box-shadow: 0 0 40px hsl(258 90% 66% / 0.3);
+  }
+  
+  .glass-card {
+    @apply bg-card/50 backdrop-blur-md border border-border/50;
+  }
+  
+  .loading-pulse {
+    @apply animate-pulse bg-gradient-to-r from-primary/20 to-accent/20;
+  }
 }
 
 @layer base {
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground;
   }

@@ -10,12 +10,17 @@ import { useSubscription } from "@/hooks/use-subscription";
 import Link from "next/link";
 import JSZip from 'jszip';
 
-import ArticleInput from "@/components/illustrator/ArticleInput";
-import ConfigPanel, { StyleType, AspectRatio, ModelChoice } from "@/components/illustrator/ConfigPanel";
-import LoadingProgress, { LoadingStage } from "@/components/illustrator/LoadingProgress";
-import ResultDisplay from "@/components/illustrator/ResultDisplay";
+import ArticleInput from "@/components/ArticleInput";
+import ConfigPanel, { StyleType, AspectRatio, ModelChoice } from "@/components/ConfigPanel";
+import LoadingProgress, { LoadingStage } from "@/components/LoadingProgress";
+import ResultDisplay from "@/components/ResultDisplay";
+import PremiumModal from "@/components/PremiumModal";
+import { generateIllustration } from "@/lib/api";
 
-export default function Home() {
+// Hero 区右侧展示图片
+const heroIllustrationUrl = "/background-1.jpeg";
+
+export default function HomePage() {
   const [article, setArticle] = useState("");
   const [style, setStyle] = useState<StyleType>("插画");
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>("16:9");
@@ -24,6 +29,7 @@ export default function Home() {
   const [loadingStage, setLoadingStage] = useState<LoadingStage>("analyzing");
   const [progress, setProgress] = useState(0);
   const [results, setResults] = useState<any[]>([]);
+  const [showPremiumModal, setShowPremiumModal] = useState(false);
   
   const { user, loading: userLoading } = useUser();
   const { credits, refetchCredits } = useCredits();
@@ -40,15 +46,15 @@ export default function Home() {
   const isPremium = isSubscribed;
 
   const handleGenerate = async () => {
-    // 检查是否登录
-      if (!user) {
-      toast({
-        title: "请先登录",
-        description: "生成配图需要登录账户",
-        variant: "destructive",
-      });
-      return;
-    }
+    // 临时跳过登录检查 - 开发测试用
+    // if (!user) {
+    //   toast({
+    //     title: "请先登录",
+    //     description: "生成配图需要登录账户",
+    //     variant: "destructive",
+    //   });
+    //   return;
+    // }
 
     if (!article.trim()) {
       toast({
@@ -68,16 +74,16 @@ export default function Home() {
       return;
     }
 
-    // 检查积分（免费用户）
-    const userTier = getUserTier();
-    if (userTier === 'free' && (!credits || credits.remaining_credits < 1)) {
-      toast({
-        title: "积分不足",
-        description: "请购买积分或订阅会员",
-        variant: "destructive",
-      });
-      return;
-    }
+    // 临时跳过积分检查 - 开发测试用
+    // const userTier = getUserTier();
+    // if (userTier === 'free' && (!credits || credits.remaining_credits < 1)) {
+    //   toast({
+    //     title: "积分不足",
+    //     description: "请购买积分或订阅会员",
+    //     variant: "destructive",
+    //   });
+    //   return;
+    // }
 
     try {
       setIsLoading(true);
@@ -95,29 +101,21 @@ export default function Home() {
         });
       }, 100);
 
-      const res = await fetch('/api/generate-illustration', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          article_text: article,
-          user_tier: modelChoice === "seedream" ? "standard" : userTier,
-          style_choice: style,
-          aspect_ratio: aspectRatio,
-        }),
+      const res = await generateIllustration({
+        article_text: article,
+        user_tier: modelChoice === "seedream" ? "standard" : "free", // 临时使用 free
+        style_choice: style,
+        aspect_ratio: aspectRatio,
       });
-
-      const data = await res.json();
 
       setLoadingStage("generating");
       setProgress(60);
 
-      if (!data.success) {
-        throw new Error(data.error || "生成失败");
+      if (!res.success) {
+        throw new Error(res.error || "生成失败");
       }
 
-      const built = (data.images || []).map((img: any, idx: number) => ({
+      const built = (res.images || []).map((img: any, idx: number) => ({
         id: String(idx + 1),
         url: img.url,
         originalText: img.original_text,
@@ -146,6 +144,17 @@ export default function Home() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleRetryGenerate = (imageId: string, newPrompt: string) => {
+    if (!isPremium) {
+      setShowPremiumModal(true);
+      return;
+    }
+    toast({
+      title: "重新生成中...",
+      description: "正在使用新的提示词重新生成图片",
+    });
   };
 
   const handleDownloadSingle = async (imageId: string) => {
@@ -191,66 +200,92 @@ export default function Home() {
     }
   };
 
-  const canGenerate = article.trim() && article.length <= 5000 && !isLoading && user;
+  const canGenerate = article.trim() && article.length <= 5000 && !isLoading; // 临时移除 user 检查
 
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Section */}
       <div className="relative overflow-hidden bg-gradient-to-br from-background via-background/95 to-background/90">
         <div className="relative container mx-auto px-4 py-20">
-          <div className="max-w-4xl mx-auto text-center space-y-8">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-primary">
-              <Sparkles className="h-4 w-4" />
-              <span className="text-sm font-medium">AI 驱动的智能配图工具</span>
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            {/* 左侧文案 */}
+            <div className="max-w-2xl space-y-6">
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-primary">
+                <Sparkles className="h-4 w-4" />
+                <span className="text-sm font-medium">先进 AI 驱动的智能配图工具</span>
               </div>
-              
-            <h1 className="text-4xl lg:text-6xl font-bold leading-tight">
-              <span className="bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-                AI 文章智能配图工具
-              </span>
+
+              <h1 className="text-4xl lg:text-6xl font-bold leading-tight">
+                <span className="gradient-text">文章一键智能高清配图</span>
               </h1>
-              
-            <p className="text-xl text-muted-foreground leading-relaxed max-w-3xl mx-auto">
-              基于 GPT-5 语义分析和 FLUX.1 图像生成技术，为你的文章自动生成高质量插图
-            </p>
 
-            {user && (
-              <div className="flex items-center justify-center gap-8 pt-4">
-                <div className="text-center">
-                  <div className="text-2xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-                    {credits?.remaining_credits || 0}
+              <p className="text-xl text-muted-foreground leading-relaxed">
+              告别无止尽的素材搜索和复杂的提示词学习。 您的文章，就是最精准的画笔！AI 自动解析语义，批量生成风格统一、与内容完美匹配的插画系列。 从文字到视觉叙事，只需一键。
+              </p>
+
+              <div className="flex items-center gap-8 pt-2">
+                <div className="text-left">
+                  <div className="text-2xl font-bold gradient-text">文章</div>
+                  <div className="text-sm text-muted-foreground">长篇解析</div>
+                </div>
+                <div className="text-left">
+                  <div className="text-2xl font-bold gradient-text">诗歌</div>
+                  <div className="text-sm text-muted-foreground">意象捕捉</div>
+                </div>
+                <div className="text-left">
+                  <div className="text-2xl font-bold gradient-text">歌词</div>
+                  <div className="text-sm text-muted-foreground">情感分析</div>
+                </div>
+              </div>
+
+              {!user && (
+                <div className="flex flex-col sm:flex-row gap-4 pt-4">
+                  <Link href="/sign-in">
+                    <Button size="lg" className="hero-button text-lg h-14 px-8">
+                      登录开始使用
+                    </Button>
+                  </Link>
+                  <Link href="/sign-up">
+                    <Button size="lg" variant="outline" className="text-lg h-14 px-8">
+                      免费注册
+                    </Button>
+                  </Link>
+                </div>
+              )}
+
+              {user && (
+                <div className="flex items-center gap-8 pt-4">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold gradient-text">
+                      {credits?.remaining_credits || 0}
+                    </div>
+                    <div className="text-sm text-muted-foreground">剩余积分</div>
                   </div>
-                  <div className="text-sm text-muted-foreground">剩余积分</div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold gradient-text">
+                      {isPremium ? '会员' : '免费'}
+                    </div>
+                    <div className="text-sm text-muted-foreground">用户等级</div>
+                  </div>
                 </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-                    {isPremium ? '会员' : '免费'}
-                </div>
-                  <div className="text-sm text-muted-foreground">用户等级</div>
-                </div>
-              </div>
-            )}
+              )}
+            </div>
 
-            {!user && (
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Link href="/sign-in">
-                  <Button size="lg" className="text-lg h-14 px-8">
-                    登录开始使用
-                  </Button>
-                </Link>
-                <Link href="/sign-up">
-                  <Button size="lg" variant="outline" className="text-lg h-14 px-8">
-                    免费注册
-                  </Button>
-                </Link>
-              </div>
-            )}
+            {/* 右侧图片 */}
+            <div className="relative">
+              <img
+                src={heroIllustrationUrl}
+                alt="Hero illustration"
+                className="w-full h-auto rounded-xl shadow-2xl ring-1 ring-foreground/10 object-cover"
+              />
+            </div>
           </div>
         </div>
       </div>
 
       {/* Main Content */}
-      {user && (
+      {/* 临时移除登录检查 - 开发测试用 */}
+      {true && (
         <div className="container mx-auto px-4 py-12">
           <div className="grid lg:grid-cols-5 gap-8">
             {/* Left Panel - Input & Configuration */}
@@ -272,13 +307,13 @@ export default function Home() {
               <Button
                 onClick={handleGenerate}
                 disabled={!canGenerate}
-                className="w-full text-lg py-6"
+                className="hero-button w-full text-lg py-6"
                 size="lg"
               >
                 <Wand2 className="h-5 w-5 mr-2" />
                 一键智能配图
               </Button>
-                  </div>
+            </div>
 
             {/* Right Panel - Results */}
             <div className="lg:col-span-3">
@@ -295,15 +330,16 @@ export default function Home() {
                 <ResultDisplay
                   images={results}
                   isPremium={isPremium}
+                  onRetryGenerate={handleRetryGenerate}
                   onDownloadSingle={handleDownloadSingle}
                   onDownloadAll={handleDownloadAll}
                 />
               )}
               
               {!isLoading && results.length === 0 && (
-                <div className="rounded-lg p-12 text-center border border-border">
-                <div className="space-y-4">
-                    <div className="w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center">
+                <div className="glass-card rounded-lg p-12 text-center">
+                  <div className="space-y-4">
+                    <div className="w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
                       <Sparkles className="h-10 w-10 text-primary" />
                     </div>
                     <h3 className="text-xl font-semibold">开始您的创作之旅</h3>
@@ -317,6 +353,19 @@ export default function Home() {
           </div>
         </div>
       )}
+
+      {/* Premium Modal */}
+      <PremiumModal
+        open={showPremiumModal}
+        onOpenChange={setShowPremiumModal}
+        onUpgrade={() => {
+          setShowPremiumModal(false);
+          toast({
+            title: "升级会员",
+            description: "前往仪表板订阅会员",
+          });
+        }}
+      />
     </div>
   );
 }

@@ -4,20 +4,21 @@ import { generateIllustrationWithAI } from '@/lib/ai-service';
 
 export async function POST(request: NextRequest) {
   try {
-    // ✅ 1. 验证用户身份
+    // ✅ 1. 验证用户身份（临时跳过 - 开发测试用）
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     
-    if (authError || !user) {
-      return NextResponse.json(
-        { 
-          success: false, 
-          image_urls: [], 
-          error: '请先登录' 
-        },
-        { status: 401 }
-      );
-    }
+    // 临时允许未登录用户测试
+    // if (authError || !user) {
+    //   return NextResponse.json(
+    //     { 
+    //       success: false, 
+    //       image_urls: [], 
+    //       error: '请先登录' 
+    //     },
+    //     { status: 401 }
+    //   );
+    // }
 
     // ✅ 2. 获取请求参数
     const body = await request.json();
@@ -46,84 +47,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ✅ 3. 获取客户数据
-    const { data: customer, error: fetchError } = await supabase
-      .from('customers')
-      .select('*')
-      .eq('user_id', user.id)
-      .single();
-
-    if (fetchError) {
-      console.error('Error fetching customer:', fetchError);
-      return NextResponse.json(
-        { 
-          success: false, 
-          image_urls: [], 
-          error: '无法获取用户信息' 
-        },
-        { status: 500 }
-      );
-    }
-
-    // ✅ 4. 检查并扣除积分（免费用户）或验证订阅（付费用户）
-    let actualTier: 'free' | 'standard' = 'free';
-    
-    if (user_tier === 'standard') {
-      // 检查订阅状态
-      const { data: subscription } = await supabase
-        .from('subscriptions')
+    // ✅ 3. 获取客户数据（临时跳过 - 开发测试用）
+    let customer = null;
+    if (user) {
+      const { data: customerData, error: fetchError } = await supabase
+        .from('customers')
         .select('*')
         .eq('user_id', user.id)
-        .eq('status', 'active')
         .single();
-
-      if (subscription) {
-        actualTier = 'standard';
-      } else {
-        // 没有有效订阅，降级为免费用户
-        actualTier = 'free';
-      }
+      customer = customerData;
     }
 
-    // 免费用户需要扣除积分
-    if (actualTier === 'free') {
-      const creditCost = 1; // 每次生成消耗 1 个积分
-      
-      if (!customer || customer.credits < creditCost) {
-        return NextResponse.json(
-          { 
-            success: false, 
-            image_urls: [], 
-            error: '积分不足，请购买积分或订阅会员' 
-          },
-          { status: 403 }
-        );
-      }
-
-      // 扣除积分
-      const newCredits = customer.credits - creditCost;
-      const { error: updateError } = await supabase
-        .from('customers')
-        .update({
-          credits: newCredits,
-          updated_at: new Date().toISOString()
-        })
-        .eq('user_id', user.id);
-
-      if (updateError) {
-        console.error('Error updating credits:', updateError);
-        return NextResponse.json(
-          { 
-            success: false, 
-            image_urls: [], 
-            error: '扣除积分失败' 
-          },
-          { status: 500 }
-        );
-      }
-
-      console.log(`扣除用户 ${user.id} 的 ${creditCost} 积分，剩余: ${newCredits}`);
-    }
+    // ✅ 4. 检查并扣除积分（临时跳过 - 开发测试用）
+    let actualTier: 'free' | 'standard' = user_tier as 'free' | 'standard';
+    
+    // 临时跳过积分和订阅检查
+    console.log('临时测试模式：跳过积分检查，直接使用', actualTier);
 
     // ✅ 5. 调用AI服务生成插画
     const result = await generateIllustrationWithAI({
@@ -148,19 +87,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(result, { status: 500 });
     }
 
-    // ✅ 6. 保存生成历史到数据库
-    await supabase
-      .from('generation_history')
-      .insert({
-        user_id: user.id,
-        article_text: article_text,
-        image_urls: result.image_urls,
-        images_data: result.images,
-        user_tier: actualTier,
-        style_choice: style_choice,
-        aspect_ratio: aspect_ratio,
-        created_at: new Date().toISOString(),
-      });
+    // ✅ 6. 保存生成历史到数据库（临时跳过 - 开发测试用）
+    if (user) {
+      await supabase
+        .from('generation_history')
+        .insert({
+          user_id: user.id,
+          article_text: article_text,
+          image_urls: result.image_urls,
+          images_data: result.images,
+          user_tier: actualTier,
+          style_choice: style_choice,
+          aspect_ratio: aspect_ratio,
+          created_at: new Date().toISOString(),
+        });
+    }
 
     // ✅ 7. 返回结果
     return NextResponse.json(result);
